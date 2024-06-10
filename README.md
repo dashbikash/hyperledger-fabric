@@ -10,7 +10,8 @@
    PATH=${PWD}/../bin:$PATH
    
 6. Important : Set FABRIC_CFG_PATH
-    export FABRIC_CFG_PATH=$PWD/../config/
+    ~~~
+    export FABRIC_CFG_PATH=${PWD}/../config/
 7. Run peer as Org1 
     ~~~ 
     export CORE_PEER_TLS_ENABLED=true \
