@@ -1,51 +1,101 @@
 package main
 
 import (
+	"crypto/x509"
 	"fmt"
+	"os"
+
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/hyperledger/fabric-gateway/pkg/identity"
-	"github.com/hyperledger/fabric-protos-go-apiv2/gateway"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/status"
-	"os"
 )
 
 const (
 	mspID        = "Org1MSP"
 	cryptoPath   = "../../test-network/organizations/peerOrganizations/org1.example.com"
-	certPath     = cryptoPath + "/users/User1@org1.example.com/msp/signcerts"
-	keyPath      = cryptoPath + "/users/User1@org1.example.com/msp/keystore"
+	certPath     = cryptoPath + "/users/User1@org1.example.com/msp/signcerts/cert.pem"
+	keyPath      = cryptoPath + "/users/User1@org1.example.com/msp/keystore/bfc18bd08a9cf1918cdba9cef371fc922d0e41d7819c530320e70a0d9126a6aa_sk"
 	tlsCertPath  = cryptoPath + "/peers/peer0.org1.example.com/tls/ca.crt"
 	peerEndpoint = "dns:///localhost:7051"
 	gatewayPeer  = "peer0.org1.example.com"
 )
 
 func main() {
-	// The gRPC client connection should be shared by all Gateway connections to this endpoint
-	clientConnection := newGrpcConnection()
+	// Create gRPC client connection, which should be shared by all gateway connections to this endpoint.
+	clientConnection, err := NewGrpcConnection()
+	panicOnError(err)
 	defer clientConnection.Close()
+
+	// Create client identity and signing implementation based on X.509 certificate and private key.
+	id := NewIdentity()
+	sign := NewSign()
+
+	// Create a Gateway connection for a specific client identity.
+	gateway, err := client.Connect(id, client.WithSign(sign), client.WithClientConnection(clientConnection))
+	panicOnError(err)
+	defer gateway.Close()
+
+	// Obtain smart contract deployed on the network.
+	network := gateway.GetNetwork("mychannel")
+	contract := network.GetContract("docstore")
+
+	// Submit transactions that store state to the ledger.
+	// submitResult, err := contract.SubmitTransaction("CreateDocument", "arg1", "arg2")
+	// panicOnError(err)
+	// fmt.Printf("Submit result: %s", string(submitResult))
+
+	// Evaluate transactions that query state from the ledger.
+	evaluateResult, err := contract.EvaluateTransaction("GetAll")
+	panicOnError(err)
+	fmt.Printf("Evaluate result: %s", string(evaluateResult))
 }
 
-func newGrpcConnection() *grpc.ClientConn {
-	certificatePEM, err := os.ReadFile(tlsCertPath)
-	if err != nil {
-		panic(fmt.Errorf("failed to read TLS certifcate file: %w", err))
-	}
+// NewGrpcConnection creates a new gRPC client connection
+func NewGrpcConnection() (*grpc.ClientConn, error) {
+	tlsCertificatePEM, err := os.ReadFile(tlsCertPath)
+	panicOnError(err)
+
+	tlsCertificate, err := identity.CertificateFromPEM(tlsCertificatePEM)
+	panicOnError(err)
+
+	certPool := x509.NewCertPool()
+	certPool.AddCert(tlsCertificate)
+	transportCredentials := credentials.NewClientTLSFromCert(certPool, "")
+
+	return grpc.NewClient(peerEndpoint, grpc.WithTransportCredentials(transportCredentials))
+}
+
+// NewIdentity creates a client identity for this Gateway connection using an X.509 certificate.
+func NewIdentity() *identity.X509Identity {
+	certificatePEM, err := os.ReadFile(certPath)
+	panicOnError(err)
 
 	certificate, err := identity.CertificateFromPEM(certificatePEM)
+	panicOnError(err)
+
+	id, err := identity.NewX509Identity(mspID, certificate)
+	panicOnError(err)
+
+	return id
+}
+
+// NewSign creates a function that generates a digital signature from a message digest using a private key.
+func NewSign() identity.Sign {
+	privateKeyPEM, err := os.ReadFile("privateKey.pem")
+	panicOnError(err)
+
+	privateKey, err := identity.PrivateKeyFromPEM(privateKeyPEM)
+	panicOnError(err)
+
+	sign, err := identity.NewPrivateKeySign(privateKey)
+	panicOnError(err)
+
+	return sign
+}
+
+func panicOnError(err error) {
 	if err != nil {
 		panic(err)
 	}
-
-	certPool := x509.NewCertPool()
-	certPool.AddCert(certificate)
-	transportCredentials := credentials.NewClientTLSFromCert(certPool, gatewayPeer)
-
-	connection, err := grpc.NewClient(peerEndpoint, grpc.WithTransportCredentials(transportCredentials))
-	if err != nil {
-		panic(fmt.Errorf("failed to create gRPC connection: %w", err))
-	}
-
-	return connection
 }
