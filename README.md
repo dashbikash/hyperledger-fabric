@@ -23,3 +23,10 @@
 8. Check Channels 
     ~~~ 
     peer channel list
+
+
+
+Troubleshoot :
+Error in Alpine: 
+apk add --no-cache libaio libnsl libc6-compat gcompat jq
+

@@ -13,7 +13,7 @@ import (
 
 const (
 	mspID        = "Org1MSP"
-	cryptoPath   = "../../test-network/organizations/peerOrganizations/org1.example.com"
+	cryptoPath   = "../../fabric-samples/test-network/organizations/peerOrganizations/org1.example.com"
 	certPath     = cryptoPath + "/users/User1@org1.example.com/msp/signcerts/cert.pem"
 	keyPath      = cryptoPath + "/users/User1@org1.example.com/msp/keystore/bfc18bd08a9cf1918cdba9cef371fc922d0e41d7819c530320e70a0d9126a6aa_sk"
 	tlsCertPath  = cryptoPath + "/peers/peer0.org1.example.com/tls/ca.crt"
@@ -82,7 +82,7 @@ func NewIdentity() *identity.X509Identity {
 
 // NewSign creates a function that generates a digital signature from a message digest using a private key.
 func NewSign() identity.Sign {
-	privateKeyPEM, err := os.ReadFile("privateKey.pem")
+	privateKeyPEM, err := os.ReadFile(keyPath)
 	panicOnError(err)
 
 	privateKey, err := identity.PrivateKeyFromPEM(privateKeyPEM)
