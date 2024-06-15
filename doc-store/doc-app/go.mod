@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/net v0.22.0 // indirect

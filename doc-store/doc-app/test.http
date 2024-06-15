@@ -1,0 +1,11 @@
+### Get All
+GET http://localhost:8080/doc HTTP/1.1
+
+### Get One
+GET http://localhost:8080/doc/2 HTTP/1.1
+
+### Delete Doc
+DELETE http://localhost:8080/doc/0 HTTP/1.1
+
+### Create Document
+POST http://localhost:8080/doc?id=2&content=Bikash%20P%20Dash  HTTP/1.1

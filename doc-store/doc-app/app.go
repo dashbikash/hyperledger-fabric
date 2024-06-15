@@ -2,11 +2,13 @@ package main
 
 import (
 	"crypto/x509"
-	"fmt"
+	"net/http"
 	"os"
+	"path"
 
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/hyperledger/fabric-gateway/pkg/identity"
+	"github.com/julienschmidt/httprouter"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -14,8 +16,8 @@ import (
 const (
 	mspID        = "Org1MSP"
 	cryptoPath   = "../../fabric-samples/test-network/organizations/peerOrganizations/org1.example.com"
-	certPath     = cryptoPath + "/users/User1@org1.example.com/msp/signcerts/cert.pem"
-	keyPath      = cryptoPath + "/users/User1@org1.example.com/msp/keystore/bfc18bd08a9cf1918cdba9cef371fc922d0e41d7819c530320e70a0d9126a6aa_sk"
+	certPath     = cryptoPath + "/users/User1@org1.example.com/msp/signcerts/"
+	keyPath      = cryptoPath + "/users/User1@org1.example.com/msp/keystore/"
 	tlsCertPath  = cryptoPath + "/peers/peer0.org1.example.com/tls/ca.crt"
 	peerEndpoint = "dns:///localhost:7051"
 	gatewayPeer  = "peer0.org1.example.com"
@@ -40,15 +42,27 @@ func main() {
 	network := gateway.GetNetwork("mychannel")
 	contract := network.GetContract("docstore")
 
-	// Submit transactions that store state to the ledger.
-	// submitResult, err := contract.SubmitTransaction("CreateDocument", "arg1", "arg2")
-	// panicOnError(err)
-	// fmt.Printf("Submit result: %s", string(submitResult))
+	router := httprouter.New()
+	router.GET("/doc", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		resp := GetAll(contract)
+		w.Write(resp)
+	})
+	router.GET("/doc/:id", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		resp := GetDocument(contract, p.ByName("id"))
+		w.Write(resp)
+	})
+	router.POST("/doc", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		queryParams := r.URL.Query()
+		resp := CreateDocument(contract, queryParams.Get("id"), r.URL.Query().Get("content"), "bikash")
+		w.Write(resp)
+	})
+	router.DELETE("/doc/:id", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		resp := DeleteDocument(contract, p.ByName("id"))
+		w.Write(resp)
+	})
 
-	// Evaluate transactions that query state from the ledger.
-	evaluateResult, err := contract.EvaluateTransaction("GetAll")
-	panicOnError(err)
-	fmt.Printf("Evaluate result: %s", string(evaluateResult))
+	http.ListenAndServe(":8080", router)
+
 }
 
 // NewGrpcConnection creates a new gRPC client connection
@@ -68,7 +82,7 @@ func NewGrpcConnection() (*grpc.ClientConn, error) {
 
 // NewIdentity creates a client identity for this Gateway connection using an X.509 certificate.
 func NewIdentity() *identity.X509Identity {
-	certificatePEM, err := os.ReadFile(certPath)
+	certificatePEM, err := readFirstFile(certPath)
 	panicOnError(err)
 
 	certificate, err := identity.CertificateFromPEM(certificatePEM)
@@ -82,7 +96,7 @@ func NewIdentity() *identity.X509Identity {
 
 // NewSign creates a function that generates a digital signature from a message digest using a private key.
 func NewSign() identity.Sign {
-	privateKeyPEM, err := os.ReadFile(keyPath)
+	privateKeyPEM, err := readFirstFile(keyPath)
 	panicOnError(err)
 
 	privateKey, err := identity.PrivateKeyFromPEM(privateKeyPEM)
@@ -94,8 +108,22 @@ func NewSign() identity.Sign {
 	return sign
 }
 
+// Helper methods
 func panicOnError(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+func readFirstFile(dirPath string) ([]byte, error) {
+	dir, err := os.Open(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	fileNames, err := dir.Readdirnames(1)
+	if err != nil {
+		return nil, err
+	}
+
+	return os.ReadFile(path.Join(dirPath, fileNames[0]))
 }

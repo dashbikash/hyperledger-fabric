@@ -18,7 +18,7 @@ peer lifecycle chaincode package docstore.tar.gz --path ./ --lang golang --label
 
 
 2.
-NOTE: export CC_PATH=/workspaces/hyperledger-fabric-dev/doc-store/doc-cc/target
+NOTE: export CC_PATH=../../doc-store/doc-cc/target
 ~~~
 export CORE_PEER_TLS_ENABLED=true
 export CORE_PEER_LOCALMSPID="Org1MSP"
