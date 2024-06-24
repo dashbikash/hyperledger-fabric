@@ -47,5 +47,13 @@
       ]
     }
   ],
-  "chaincodes": []
+  "chaincodes": [
+    {
+      "name": "docstore",
+      "version": "0.0.1",
+      "lang": "golang",
+      "channel": "my-channel1",
+      "directory": "../docstore-demo/doc-cc"
+    }
+  ]
 }
