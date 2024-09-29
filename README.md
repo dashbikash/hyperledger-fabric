@@ -5,9 +5,9 @@
 2. ./install-fabric.sh --fabric-version 2.5.8 d s b
 3. cd fabric-samples/test-network
 4. ./network.sh up createChannel -c mychannel -ca
-5. export 
-   ~~~
-   PATH=${PWD}/../bin:$PATH
+5. Add bin to path 
+    ~~~
+    export PATH=${PWD}/../bin:$PATH
    
 6. Important : Set FABRIC_CFG_PATH
     ~~~
